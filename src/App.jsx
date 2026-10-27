@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -79,9 +80,11 @@ function useActiveSection() {
       let current = ''
 
       if (window.scrollY >= 120) navLinks.forEach((link) => {
-        const section = document.querySelector(link.href)
+        if (!link.href.includes('#')) return
+        const sectionId = link.href.split('#')[1]
+        const section = document.getElementById(sectionId)
         if (section && section.offsetTop <= marker) {
-          current = link.href.slice(1)
+          current = sectionId
         }
       })
 
@@ -123,7 +126,7 @@ function SectionHeader({ eyebrow, title, description, aside, className = '' }) {
   )
 }
 
-function Header({ activeSection }) {
+function Header({ activeSection, isAboutPage = false }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [clickedSection, setClickedSection] = useState('')
 
@@ -138,29 +141,40 @@ function Header({ activeSection }) {
   return (
     <header className="site-header">
       <div className="header-inner">
-        <a className="brand" href="#home" aria-label="Insan Fadillah home">
+        <Link className="brand" to="/" aria-label="Insan Fadillah home">
           <span className="brand-mark">A</span>
           <span>Insan Fadillah</span>
-        </a>
+        </Link>
 
         <nav className={`main-nav ${menuOpen ? 'is-open' : ''}`} aria-label="Primary navigation">
-          {navLinks.map((link) => (
-            <a
-              key={link.href}
-              className={`nav-link ${activeSection === link.href.slice(1) || (!activeSection && clickedSection === link.href.slice(1)) ? 'is-active' : ''}`}
-              href={link.href}
-              onClick={() => {
-                setClickedSection(link.href.slice(1))
-                setMenuOpen(false)
-              }}
-            >
-              {link.label}
-            </a>
-          ))}
-          <a className="button button--small button--primary nav-cta" href="#contact" onClick={() => setMenuOpen(false)}>
+          {navLinks.map((link) => {
+            const isHash = link.href.includes('#')
+            const sectionId = isHash ? link.href.split('#')[1] : ''
+            const isActive = isAboutPage
+              ? link.href === '/about'
+              : link.href === '/'
+                ? activeSection === ''
+                : isHash
+                  ? activeSection === sectionId || (!activeSection && clickedSection === sectionId)
+                  : false
+            return (
+              <Link
+                key={link.href}
+                className={`nav-link ${isActive ? 'is-active' : ''}`}
+                to={link.href}
+                onClick={() => {
+                  if (sectionId) setClickedSection(sectionId)
+                  setMenuOpen(false)
+                }}
+              >
+                {link.label}
+              </Link>
+            )
+          })}
+          <Link className="button button--small button--primary nav-cta" to="/#contact" onClick={() => setMenuOpen(false)}>
             Let&apos;s Talk
             <ArrowUpRight size={15} />
-          </a>
+          </Link>
         </nav>
 
         <button
@@ -282,63 +296,156 @@ function Highlights() {
 }
 
 function About() {
+  const aboutHighlights = [
+    { icon: Briefcase, label: 'Focus', value: 'Business Analysis, QA & Data Analytics' },
+    { icon: Users, label: 'Approach', value: 'User-Centered & Data-Driven' },
+    { icon: Lightbulb, label: 'Mindset', value: 'Detail-Oriented Problem Solver' },
+  ]
+
   return (
     <section className="section section-shell about" id="about">
-      <SectionHeader eyebrow="About & Education" title="About Me & Education" />
-      <div className="about-grid">
-        <article className="about-card about-card--mission reveal">
-          <div className="card-topline">
-            <span className="icon-badge icon-badge--coral">
-              <Compass size={22} strokeWidth={1.8} />
-            </span>
-            <span className="card-index">01</span>
+      <SectionHeader
+        eyebrow="About Me"
+        title="Bridging Business, Data & User Experience"
+        description="A blend of analytical thinking, structured delivery, and empathetic design to turn complex challenges into practical, impactful solutions."
+      />
+      <div className="about-intro-grid">
+        <article className="about-profile-card reveal">
+          <div className="about-profile-header">
+            <div className="about-profile-avatar">
+              <img src="/images/portrait.jpeg" alt="Portrait of Insan Fadillah Azzahra" />
+            </div>
+            <div className="about-profile-info">
+              <h3>{profile.name}</h3>
+              <p>{profile.role}</p>
+              <div className="about-profile-meta">
+                <span>
+                  <MapPin size={14} />
+                  {profile.location}
+                </span>
+                <span className="about-profile-pill">
+                  <span className="status-dot" aria-hidden="true" />
+                  {profile.availability}
+                </span>
+              </div>
+            </div>
           </div>
-          <h3>Dedication and Career Orientation</h3>
-          <p>
-            I am focused on building a career in Business Analysis, Data Analytics, and Quality
-            Assurance. I turn complex needs into clear, structured solutions — bridging business
-            goals, technology, and user experience to deliver measurable impact.
+          <p className="about-profile-bio">
+            I&apos;m an Information Systems student at Satu University who enjoys connecting business needs
+            with practical tech solutions. With hands-on experience in UI/UX design, software quality
+            assurance, and project coordination, I focus on clarity, structure, and measurable outcomes.
           </p>
-          <div className="tag-row">
-            <span className="tag">Business Analysis</span>
-            <span className="tag">Data Analytics</span>
-            <span className="tag">Quality Assurance</span>
+          <div className="about-highlight-row">
+            {aboutHighlights.map(({ icon: Icon, label, value }) => (
+              <div className="about-highlight-item" key={label}>
+                <span className="about-highlight-icon">
+                  <Icon size={16} />
+                </span>
+                <div>
+                  <span className="about-highlight-label">{label}</span>
+                  <strong className="about-highlight-value">{value}</strong>
+                </div>
+              </div>
+            ))}
           </div>
-          <a className="text-link" href="#expertise">
-            Explore my approach
-            <ArrowRight size={15} />
-          </a>
+          <div className="about-profile-actions">
+            <a className="button button--primary" href="#contact">
+              Let&apos;s Collaborate
+              <ArrowUpRight size={17} />
+            </a>
+            <a className="button button--ghost" href="/Insan-Fadillah-Azzahra-CV.pdf" download>
+              <Download size={16} />
+              Download CV
+            </a>
+          </div>
         </article>
 
-        <article className="about-card about-card--education reveal">
-          <div className="card-topline">
-            <span className="icon-badge icon-badge--cream">
-              <GraduationCap size={22} strokeWidth={1.8} />
-            </span>
-            <span className="date-badge">2022 — 2026</span>
+        <div className="about-side-grid">
+          <article className="about-card about-card--mission reveal">
+            <div className="card-topline">
+              <span className="icon-badge icon-badge--coral">
+                <Compass size={22} strokeWidth={1.8} />
+              </span>
+              <span className="card-index">01</span>
+            </div>
+            <h3>Career Orientation</h3>
+            <p>
+              Focused on building a career in Business Analysis, Data Analytics, and Quality
+              Assurance. I turn complex needs into clear, structured solutions — bridging business
+              goals, technology, and user experience to deliver measurable impact.
+            </p>
+            <div className="tag-row">
+              <span className="tag">Business Analysis</span>
+              <span className="tag">Data Analytics</span>
+              <span className="tag">Quality Assurance</span>
+              <span className="tag">System Analysis</span>
+            </div>
+            <a className="text-link" href="#expertise">
+              Explore my approach
+              <ArrowRight size={15} />
+            </a>
+          </article>
+
+          <article className="about-card about-card--education reveal">
+            <div className="card-topline">
+              <span className="icon-badge icon-badge--cream">
+                <GraduationCap size={22} strokeWidth={1.8} />
+              </span>
+              <span className="date-badge">2022 — 2026</span>
+            </div>
+            <p className="education-label">Bachelor&apos;s Degree</p>
+            <h3>Satu University</h3>
+            <p className="education-major">Information Systems</p>
+            <p>
+              Pursuing a degree in Information Systems with a strong foundation in database
+              management, business process modeling, UI/UX design, and software testing. Actively
+              involved in academic projects and organizational activities.
+            </p>
+            <div className="education-meta">
+              <span>
+                <MapPin size={14} />
+                Indonesia
+              </span>
+              <span className="education-status">
+                <span className="status-dot" aria-hidden="true" />
+                In progress
+              </span>
+            </div>
+            <a className="text-link" href="#projects">
+              View campus projects
+              <ArrowUpRight size={15} />
+            </a>
+          </article>
+        </div>
+      </div>
+
+      <div className="about-values-grid reveal">
+        <article className="about-value-card">
+          <span className="about-value-icon">
+            <ShieldCheck size={18} />
+          </span>
+          <div>
+            <h4>Clarity First</h4>
+            <p>Translating complex ideas into simple, actionable solutions.</p>
           </div>
-          <p className="education-label">Bachelor&apos;s Degree</p>
-          <h3>Satu University</h3>
-          <p className="education-major">Information Systems</p>
-          <p>
-            Currently pursuing a degree in Information Systems, with a strong foundation in
-            database management, business process modeling, UI/UX design, and software testing.
-            Actively involved in academic projects and organizational activities.
-          </p>
-          <div className="education-meta">
-            <span>
-              <MapPin size={14} />
-              Indonesia
-            </span>
-            <span className="education-status">
-              <span className="status-dot" aria-hidden="true" />
-              In progress
-            </span>
+        </article>
+        <article className="about-value-card">
+          <span className="about-value-icon">
+            <Check size={18} />
+          </span>
+          <div>
+            <h4>Quality-Driven</h4>
+            <p>Every detail matters, from logic to user experience.</p>
           </div>
-          <a className="text-link" href="#projects">
-            View campus projects
-            <ArrowUpRight size={15} />
-          </a>
+        </article>
+        <article className="about-value-card">
+          <span className="about-value-icon">
+            <Sparkles size={18} />
+          </span>
+          <div>
+            <h4>Always Learning</h4>
+            <p>Constantly exploring new tools to grow and deliver better.</p>
+          </div>
         </article>
       </div>
     </section>
@@ -1111,10 +1218,10 @@ function Footer() {
     <footer className="site-footer section-shell">
       <div className="footer-top">
         <div className="footer-brand">
-          <a className="brand" href="#home">
+          <Link className="brand" to="/">
             <span className="brand-mark">A</span>
             <span>Insan Fadillah</span>
-          </a>
+          </Link>
           <p>
             {profile.name}
             <br />
@@ -1123,9 +1230,9 @@ function Footer() {
         </div>
         <div className="footer-links">
           {navLinks.map((link) => (
-            <a key={link.href} href={link.href}>
+            <Link key={link.href} to={link.href}>
               {link.label}
-            </a>
+            </Link>
           ))}
           <a href={profile.linkedin} target="_blank" rel="noreferrer">
             LinkedIn
@@ -1136,7 +1243,7 @@ function Footer() {
         <p>© 2026 {profile.name}. All rights reserved.</p>
         <div className="footer-meta">
           <span>Designed with intention &amp; curiosity</span>
-          <a className="back-to-top" href="#home" aria-label="Back to top">
+          <a className="back-to-top" href="#" aria-label="Back to top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
             <ChevronUp size={16} />
             Back to top
           </a>
@@ -1146,9 +1253,481 @@ function Footer() {
   )
 }
 
-function App() {
+function HomePage() {
   useReveal()
   const activeSection = useActiveSection()
+
+  return (
+    <>
+      <Header activeSection={activeSection} isAboutPage={false} />
+      <main>
+        <Hero />
+        <Highlights />
+        <Projects />
+        <Expertise />
+        <Experience />
+        <Contact />
+      </main>
+      <Footer />
+    </>
+  )
+}
+
+function AboutPage() {
+  useReveal()
+
+  useEffect(() => {
+    const previousTitle = document.title
+    document.title = 'About — Insan Fadillah Azzahra'
+    return () => {
+      document.title = previousTitle
+    }
+  }, [])
+
+  const quickFacts = [
+    {
+      icon: GraduationCap,
+      title: 'Information Systems Student',
+      detail: 'Satu University · 2022 — 2026',
+    },
+    {
+      icon: Briefcase,
+      title: 'Business & System Analysis',
+      detail: 'Requirements · Process · Structure',
+    },
+    {
+      icon: ShieldCheck,
+      title: 'Quality Assurance',
+      detail: 'Testing · Documentation · Release',
+    },
+    {
+      icon: Sparkles,
+      title: 'Open for Opportunities',
+      detail: 'Internship · Project · Collaboration',
+    },
+  ]
+
+  const facts = [
+    { label: 'Full name', value: profile.name },
+    { label: 'Based in', value: 'Indonesia · open to remote' },
+    { label: 'Education', value: 'Information Systems, Satu University' },
+    { label: 'Focus', value: 'Business Analysis · QA · UI/UX' },
+    { label: 'Currently', value: 'QA Intern at PT. Nusantara Digital' },
+    { label: 'Availability', value: 'Internship, project & collaboration' },
+  ]
+
+  const focusAreas = [
+    {
+      number: '01',
+      tone: 'rose',
+      icon: Briefcase,
+      title: 'Business & System Analysis',
+      description:
+        'I map the problem before anyone builds the solution — clarifying needs, processes, and requirements so the whole team moves in one direction.',
+      skills: [
+        'Requirements gathering',
+        'Business process modeling',
+        'UML & BPMN',
+        'BRD documentation',
+        'Stakeholder analysis',
+        'Feasibility analysis',
+      ],
+    },
+    {
+      number: '02',
+      tone: 'amber',
+      icon: ShieldCheck,
+      title: 'Quality Assurance',
+      description:
+        'I build testing practices that protect the user experience and make every release more dependable, from the first test case to the final regression run.',
+      skills: [
+        'Test planning',
+        'Test case design',
+        'Functional testing',
+        'Regression testing',
+        'API testing',
+        'Defect reporting',
+      ],
+    },
+    {
+      number: '03',
+      tone: 'coral',
+      icon: PenTool,
+      title: 'UI/UX & Product Thinking',
+      description:
+        'I connect user insight with product goals to shape simple, inclusive, and purposeful digital experiences that people actually want to use.',
+      skills: [
+        'User research',
+        'Wireframing',
+        'Prototyping',
+        'Design systems',
+        'Information architecture',
+        'Usability testing',
+      ],
+    },
+  ]
+
+  const learningItems = [
+    { title: 'Business Analysis Fundamentals', meta: 'Coursera · 2025' },
+    { title: 'QA & Software Testing Fundamental', meta: 'Digital Talent Academy · 2025' },
+    { title: 'UI/UX Design & Prototyping', meta: 'DesignLab Indonesia · 2024' },
+    { title: 'Public Relations & Media', meta: 'HIMSI · 2023 — 2024' },
+  ]
+
+  const values = [
+    {
+      icon: Compass,
+      title: 'Clarity before speed',
+      description:
+        'A shared understanding at the start saves days of rework later. I would rather ask one more question now than rebuild later.',
+    },
+    {
+      icon: ClipboardCheck,
+      title: 'Evidence over assumption',
+      description:
+        'Decisions get stronger when they are grounded in data, testing, and real user behavior — not only in what feels right.',
+    },
+    {
+      icon: Users,
+      title: 'Empathy in the details',
+      description:
+        'Small copy, flow, and process choices decide whether people feel supported or stuck. Details are where trust is built.',
+    },
+    {
+      icon: Lightbulb,
+      title: 'Learn, then share',
+      description:
+        'I document what I learn so the next person and the next project can move faster. Growth is better when it is shared.',
+    },
+  ]
+
+  const interests = [
+    'Research notes',
+    'Design systems',
+    'Community programs',
+    'Mentoring',
+    'Visual storytelling',
+    'Continuous learning',
+  ]
+
+  return (
+    <>
+      <Header activeSection="" isAboutPage />
+      <main>
+        <section className="about-hero section-shell" id="about">
+          <div className="about-hero-copy reveal">
+            <SectionLabel>About Me</SectionLabel>
+            <h1 className="about-hero-title">
+              Curious about systems,
+              <br />
+              <em>careful about people.</em>
+            </h1>
+            <p className="about-hero-description">
+              I&apos;m {profile.name}, an Information Systems student based in Indonesia. I work at
+              the intersection of business analysis, quality assurance, and product design — turning
+              messy problems into clear, dependable digital experiences.
+            </p>
+            <div className="hero-actions">
+              <Link className="button button--primary" to="/#contact">
+                Let&apos;s Connect
+                <ArrowUpRight size={17} />
+              </Link>
+              <a
+                className="button button--ghost"
+                href="/Insan-Fadillah-Azzahra-CV.pdf"
+                download
+              >
+                <Download size={16} />
+                Download CV
+              </a>
+            </div>
+            <div className="hero-footnote">
+              <span>
+                <MapPin size={14} />
+                Based in Indonesia
+              </span>
+              <span className="hero-footnote-divider" aria-hidden="true" />
+              <span>Available for remote collaboration</span>
+            </div>
+          </div>
+          <Portrait />
+        </section>
+
+        <section className="highlights section-shell reveal" aria-label="Quick facts">
+          {quickFacts.map(({ icon: Icon, title, detail }) => (
+            <div className="highlight-item" key={title}>
+              <span className="highlight-icon">
+                <Icon size={17} />
+              </span>
+              <span>
+                <strong>{title}</strong>
+                <small>{detail}</small>
+              </span>
+            </div>
+          ))}
+        </section>
+
+        <section className="section section-shell about-story">
+          <SectionHeader
+            eyebrow="My Story"
+            title="The person behind the work"
+            description="A short story about how I found my focus, what drives me, and the way I like to work with teams."
+          />
+          <div className="about-story-grid">
+            <div className="about-story-copy reveal">
+              <p className="about-story-lead">
+                I like problems that sit between people and technology — the ones that need both a
+                clear process and a human touch.
+              </p>
+              <p>
+                My interest started with a simple question: why do some digital products feel
+                effortless while others quietly create more work? That curiosity led me to
+                information systems, and from there to business analysis, quality assurance, and
+                UI/UX. They became three lenses for looking at the same problem from different
+                angles.
+              </p>
+              <p>
+                Today I split my time between coursework, internships, and campus projects. I write
+                requirements that teams can act on, test products until they behave as promised, and
+                design interfaces that make the next step obvious. I care about the small details
+                because that is usually where trust is built.
+              </p>
+              <p>
+                Outside of work, I stay involved in student organizations and community programs.
+                Those experiences taught me that good collaboration is often the difference between
+                a plan that looks good on paper and one that actually ships.
+              </p>
+              <div className="about-interests">
+                <span className="eyebrow">Off the clock</span>
+                <div className="tag-row">
+                  {interests.map((interest) => (
+                    <span className="tag" key={interest}>
+                      {interest}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <aside className="about-facts reveal">
+              <span className="eyebrow">
+                <span className="eyebrow-dot" aria-hidden="true" />
+                At a glance
+              </span>
+              <dl className="about-facts-list">
+                {facts.map((fact) => (
+                  <div key={fact.label}>
+                    <dt>{fact.label}</dt>
+                    <dd>{fact.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <a
+                className="text-link"
+                href={profile.linkedin}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Connect on LinkedIn
+                <ArrowUpRight size={15} />
+              </a>
+            </aside>
+          </div>
+        </section>
+
+        <section className="section section-shell about-focus">
+          <SectionHeader
+            eyebrow="Focus Areas"
+            title="What I focus on"
+            description="Three connected disciplines that shape how I approach every project."
+          />
+          <div className="about-focus-grid">
+            {focusAreas.map((area) => {
+              const Icon = area.icon
+              return (
+                <article
+                  className={`expertise-card expertise-card--${area.tone} reveal`}
+                  key={area.title}
+                >
+                  <div className="expertise-top">
+                    <span className="expertise-icon">
+                      <Icon size={21} strokeWidth={1.8} />
+                    </span>
+                    <span className="expertise-number">{area.number}</span>
+                  </div>
+                  <h3>{area.title}</h3>
+                  <p>{area.description}</p>
+                  <ul className="skill-list">
+                    {area.skills.map((skill) => (
+                      <li key={skill}>
+                        <span aria-hidden="true" />
+                        {skill}
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+
+        <section className="section section-shell about-education">
+          <SectionHeader
+            eyebrow="Education & Growth"
+            title="Where I learn and how I grow"
+            description="Formal study, hands-on practice, and a habit of documenting what I learn along the way."
+          />
+          <div className="about-grid">
+            <article className="about-card about-card--education reveal">
+              <div className="card-topline">
+                <span className="icon-badge icon-badge--cream">
+                  <GraduationCap size={22} strokeWidth={1.8} />
+                </span>
+                <span className="date-badge">2022 — 2026</span>
+              </div>
+              <p className="education-label">Bachelor&apos;s Degree</p>
+              <h3>Satu University</h3>
+              <p className="education-major">Information Systems</p>
+              <p>
+                Coursework in database management, business process modeling, UI/UX design, and
+                software testing. I pair academic projects with internships so theory stays connected
+                to real delivery.
+              </p>
+              <div className="tag-row">
+                <span className="tag">Database Management</span>
+                <span className="tag">BPMN</span>
+                <span className="tag">UI/UX Design</span>
+                <span className="tag">Software Testing</span>
+                <span className="tag">Project Management</span>
+              </div>
+              <div className="education-meta">
+                <span>
+                  <MapPin size={14} />
+                  Indonesia
+                </span>
+                <span className="education-status">
+                  <span className="status-dot" aria-hidden="true" />
+                  In progress
+                </span>
+              </div>
+              <Link className="text-link" to="/#projects">
+                Explore campus projects
+                <ArrowUpRight size={15} />
+              </Link>
+            </article>
+
+            <article className="about-card about-card--learning reveal">
+              <div className="card-topline">
+                <span className="icon-badge icon-badge--coral">
+                  <BadgeCheck size={22} strokeWidth={1.8} />
+                </span>
+                <span className="date-badge">Always learning</span>
+              </div>
+              <h3>Certifications &amp; Community</h3>
+              <p>
+                Beyond the classroom, I keep learning through certifications, workshops, and
+                organizational work that puts me close to real teams and real users.
+              </p>
+              <ul className="about-mini-list">
+                {learningItems.map((item) => (
+                  <li key={item.title}>
+                    <span className="about-mini-icon" aria-hidden="true">
+                      <Check size={11} />
+                    </span>
+                    <span>
+                      <strong>{item.title}</strong>
+                      <em>{item.meta}</em>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <a
+                className="text-link"
+                href={profile.linkedin}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View credentials on LinkedIn
+                <ArrowUpRight size={15} />
+              </a>
+            </article>
+          </div>
+        </section>
+
+        <section className="section section-shell about-values">
+          <SectionHeader
+            eyebrow="How I Work"
+            title="Principles I bring to every project"
+            description="Not just a process — a way of thinking about the people on the other side of the screen."
+          />
+          <div className="value-grid">
+            {values.map((value) => {
+              const Icon = value.icon
+              return (
+                <article className="value-card reveal" key={value.title}>
+                  <span className="value-icon">
+                    <Icon size={19} strokeWidth={1.8} />
+                  </span>
+                  <h3>{value.title}</h3>
+                  <p>{value.description}</p>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+
+        <section className="section section-shell about-cta-section">
+          <div className="about-cta reveal">
+            <div className="about-cta-copy">
+              <SectionLabel>Let&apos;s Connect</SectionLabel>
+              <h2>
+                Let&apos;s build something <em>meaningful.</em>
+              </h2>
+              <p>
+                I&apos;m open to internships, project collaborations, and conversations about
+                business analysis, quality assurance, data, and product design.
+              </p>
+            </div>
+            <div className="about-cta-actions">
+              <Link className="button button--primary" to="/#contact">
+                Start a conversation
+                <ArrowUpRight size={16} />
+              </Link>
+              <Link className="button button--ghost" to="/#projects">
+                View my projects
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+      <Footer />
+    </>
+  )
+}
+
+function ScrollManager() {
+  const { pathname, hash } = useLocation()
+
+  useEffect(() => {
+    if (!hash) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      return undefined
+    }
+
+    const targetId = hash.slice(1)
+    const frame = window.requestAnimationFrame(() => {
+      const element = document.getElementById(targetId)
+      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [pathname, hash])
+
+  return null
+}
+
+function App() {
+  useReveal()
   const [loaderState, setLoaderState] = useState('loading')
 
   useEffect(() => {
@@ -1184,16 +1763,11 @@ function App() {
         <span className="ambient-blob ambient-blob--three" />
         <span className="ambient-grain" />
       </div>
-      <Header activeSection={activeSection} />
-      <main>
-        <Hero />
-        <Highlights />
-        <Projects />
-        <Expertise />
-        <Experience />
-        <Contact />
-      </main>
-      <Footer />
+      <ScrollManager />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/about" element={<AboutPage />} />
+      </Routes>
     </div>
   )
 }

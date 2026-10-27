@@ -17,11 +17,12 @@ export const profile = {
 }
 
 export const navLinks = [
-  { label: 'About', href: '#home' },
-  { label: 'Skills', href: '#expertise' },
-  { label: 'Projects', href: '#projects' },
-  { label: 'Experience', href: '#experience' },
-  { label: 'Contact', href: '#contact' },
+  { label: 'Home', href: '/' },
+  { label: 'About', href: '/about' },
+  { label: 'Skills', href: '/#expertise' },
+  { label: 'Projects', href: '/#projects' },
+  { label: 'Experience', href: '/#experience' },
+  { label: 'Contact', href: '/#contact' },
 ]
 
 export const projects = [
