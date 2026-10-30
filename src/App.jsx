@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
-import { Link, Route, Routes, useLocation } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
   ArrowUpRight,
   BadgeCheck,
+  BarChart3,
   Briefcase,
   Building2,
   CalendarDays,
@@ -31,17 +32,95 @@ import {
   credentials,
   experience,
   expertise,
+  learningNow,
   navLinks,
   organizations,
   profile,
   projectFilters,
   projects,
+  skills,
+  softSkills,
   tools,
 } from './data'
 
 const expertiseIcons = [Briefcase, ShieldCheck, PenTool]
 const credentialIcons = [BadgeCheck, ShieldCheck, PenTool]
 const toolIcons = [PenTool, FileText, ClipboardCheck]
+const skillIcons = [Briefcase, ShieldCheck, PenTool, BarChart3]
+
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function getScrollOffset() {
+  const header = document.querySelector('.site-header')
+  return (header ? header.getBoundingClientRect().height : 66) + 18
+}
+
+function scrollToSection(sectionId) {
+  const target = document.getElementById(sectionId)
+  if (!target) return false
+
+  const top = target.getBoundingClientRect().top + window.scrollY - getScrollOffset()
+  window.scrollTo({
+    top: Math.max(Math.round(top), 0),
+    left: 0,
+    behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+  })
+  return true
+}
+
+function AnchorLink({ href, children, onNavigate, ...rest }) {
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+
+  const handleClick = (event) => {
+    if (onNavigate) onNavigate()
+
+    if (!href.startsWith('#')) return
+    const sectionId = href.slice(1)
+    if (!sectionId) return
+
+    event.preventDefault()
+
+    if (window.location.hash === href) {
+      scrollToSection(sectionId)
+      return
+    }
+
+    navigate(`${pathname}${href}`)
+  }
+
+  return (
+    <a href={href} onClick={handleClick} {...rest}>
+      {children}
+    </a>
+  )
+}
+
+function SectionNavLink({ to, children, className, onClick, ...rest }) {
+  const { pathname, hash } = useLocation()
+
+  const handleClick = (event) => {
+    if (onClick) onClick()
+
+    if (!to.includes('#')) return
+    const [path, targetHash] = to.split('#')
+
+    // React Router will not re-scroll when the URL is already identical,
+    // so handle a repeated click on the same section manually.
+    if ((path || '/') === pathname && `#${targetHash}` === hash) {
+      event.preventDefault()
+      scrollToSection(targetHash)
+    }
+  }
+
+  return (
+    <Link to={to} className={className} onClick={handleClick} {...rest}>
+      {children}
+    </Link>
+  )
+}
 
 function useReveal() {
   useEffect(() => {
@@ -75,29 +154,50 @@ function useActiveSection() {
   const [activeSection, setActiveSection] = useState('')
 
   useEffect(() => {
+    let frame = 0
+
     const updateActiveSection = () => {
-      const marker = window.scrollY + 160
+      frame = 0
+
+      const sections = navLinks
+        .filter((link) => link.href.includes('#'))
+        .map((link) => {
+          const id = link.href.split('#')[1]
+          return { id, element: document.getElementById(id) }
+        })
+        .filter((item) => item.element)
+
+      if (!sections.length) return
+
+      const scrollY = window.scrollY
+      const marker = getScrollOffset() + 60
       let current = ''
 
-      if (window.scrollY >= 120) navLinks.forEach((link) => {
-        if (!link.href.includes('#')) return
-        const sectionId = link.href.split('#')[1]
-        const section = document.getElementById(sectionId)
-        if (section && section.offsetTop <= marker) {
-          current = sectionId
-        }
-      })
+      if (scrollY >= 120) {
+        sections.forEach(({ id, element }) => {
+          if (element.getBoundingClientRect().top <= marker) current = id
+        })
+      }
+
+      const atBottom =
+        window.innerHeight + scrollY >= document.documentElement.scrollHeight - 4
+      if (atBottom) current = sections[sections.length - 1].id
 
       setActiveSection(current)
     }
 
+    const scheduleUpdate = () => {
+      if (!frame) frame = window.requestAnimationFrame(updateActiveSection)
+    }
+
     updateActiveSection()
-    window.addEventListener('scroll', updateActiveSection, { passive: true })
-    window.addEventListener('resize', updateActiveSection)
+    window.addEventListener('scroll', scheduleUpdate, { passive: true })
+    window.addEventListener('resize', scheduleUpdate)
 
     return () => {
-      window.removeEventListener('scroll', updateActiveSection)
-      window.removeEventListener('resize', updateActiveSection)
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', scheduleUpdate)
+      window.removeEventListener('resize', scheduleUpdate)
     }
   }, [])
 
@@ -128,15 +228,28 @@ function SectionHeader({ eyebrow, title, description, aside, className = '' }) {
 
 function Header({ activeSection, isAboutPage = false }) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [clickedSection, setClickedSection] = useState('')
+  const { pathname, hash } = useLocation()
 
   useEffect(() => {
     const closeOnResize = () => {
-      if (window.innerWidth > 820) setMenuOpen(false)
+      if (window.innerWidth > 940) setMenuOpen(false)
     }
     window.addEventListener('resize', closeOnResize)
     return () => window.removeEventListener('resize', closeOnResize)
   }, [])
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [pathname, hash])
+
+  useEffect(() => {
+    if (!menuOpen) return undefined
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setMenuOpen(false)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [menuOpen])
 
   return (
     <header className="site-header">
@@ -154,27 +267,22 @@ function Header({ activeSection, isAboutPage = false }) {
               ? link.href === '/about'
               : link.href === '/'
                 ? activeSection === ''
-                : isHash
-                  ? activeSection === sectionId || (!activeSection && clickedSection === sectionId)
-                  : false
+                : isHash && activeSection === sectionId
             return (
-              <Link
+              <SectionNavLink
                 key={link.href}
                 className={`nav-link ${isActive ? 'is-active' : ''}`}
                 to={link.href}
-                onClick={() => {
-                  if (sectionId) setClickedSection(sectionId)
-                  setMenuOpen(false)
-                }}
+                onClick={() => setMenuOpen(false)}
               >
                 {link.label}
-              </Link>
+              </SectionNavLink>
             )
           })}
-          <Link className="button button--small button--primary nav-cta" to="/#contact" onClick={() => setMenuOpen(false)}>
+          <SectionNavLink className="button button--small button--primary nav-cta" to="/#contact" onClick={() => setMenuOpen(false)}>
             Let&apos;s Talk
             <ArrowUpRight size={15} />
-          </Link>
+          </SectionNavLink>
         </nav>
 
         <button
@@ -252,10 +360,10 @@ function Hero() {
           system development, UI/UX design, software testing, and project management.
         </p>
         <div className="hero-actions">
-          <a className="button button--primary" href="#contact">
+          <AnchorLink className="button button--primary" href="#contact">
             Let&apos;s Connect
             <ArrowUpRight size={17} />
-          </a>
+          </AnchorLink>
           <a className="button button--ghost" href="/Insan-Fadillah-Azzahra-CV.pdf" download>
             <Download size={16} />
             Download CV
@@ -349,10 +457,10 @@ function About() {
             ))}
           </div>
           <div className="about-profile-actions">
-            <a className="button button--primary" href="#contact">
+            <AnchorLink className="button button--primary" href="#contact">
               Let&apos;s Collaborate
               <ArrowUpRight size={17} />
-            </a>
+            </AnchorLink>
             <a className="button button--ghost" href="/Insan-Fadillah-Azzahra-CV.pdf" download>
               <Download size={16} />
               Download CV
@@ -380,10 +488,10 @@ function About() {
               <span className="tag">Quality Assurance</span>
               <span className="tag">System Analysis</span>
             </div>
-            <a className="text-link" href="#expertise">
+            <AnchorLink className="text-link" href="#expertise">
               Explore my approach
               <ArrowRight size={15} />
-            </a>
+            </AnchorLink>
           </article>
 
           <article className="about-card about-card--education reveal">
@@ -411,10 +519,10 @@ function About() {
                 In progress
               </span>
             </div>
-            <a className="text-link" href="#projects">
+            <AnchorLink className="text-link" href="#projects">
               View campus projects
               <ArrowUpRight size={15} />
-            </a>
+            </AnchorLink>
           </article>
         </div>
       </div>
@@ -815,10 +923,10 @@ function ProjectModal({ project, onClose }) {
               ))}
             </div>
           </div>
-          <a className="button button--primary modal-cta" href="#contact" onClick={onClose}>
+          <AnchorLink className="button button--primary modal-cta" href="#contact" onNavigate={onClose}>
             Discuss a similar project
             <ArrowUpRight size={16} />
-          </a>
+          </AnchorLink>
         </div>
       </div>
     </div>
@@ -913,6 +1021,100 @@ function Expertise() {
           )
         })}
       </div>
+    </section>
+  )
+}
+
+function Skills() {
+  return (
+    <section className="section section-shell skills" id="skills">
+      <SectionHeader
+        eyebrow="Skills"
+        title="Skills & Capabilities"
+        description="The mix of analysis, testing, design, and data skills I bring to a team — built through coursework, internships, and hands-on projects."
+        aside={<span className="credential-filter">Analytical · Creative · Structured</span>}
+      />
+      <div className="skills-layout">
+        <div className="skills-grid">
+          {skills.map((group, index) => {
+            const Icon = skillIcons[index]
+            return (
+              <article className="skill-card reveal" key={group.title}>
+                <div className="skill-card-head">
+                  <span className="skill-card-icon">
+                    <Icon size={19} strokeWidth={1.8} />
+                  </span>
+                  <div>
+                    <h3>{group.title}</h3>
+                    <p>{group.caption}</p>
+                  </div>
+                  <span className="skill-count" aria-hidden="true">
+                    {String(group.items.length).padStart(2, '0')}
+                  </span>
+                </div>
+                <ul className="skill-meters">
+                  {group.items.map((item, itemIndex) => (
+                    <li key={item.name}>
+                      <div className="skill-meter-head">
+                        <span>{item.name}</span>
+                        <em>{item.level}%</em>
+                      </div>
+                      <span className="skill-meter" aria-hidden="true">
+                        <span
+                          style={{
+                            width: `${item.level}%`,
+                            animationDelay: `${itemIndex * 70}ms`,
+                          }}
+                        />
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            )
+          })}
+        </div>
+
+        <aside className="skills-aside reveal">
+          <div>
+            <span className="eyebrow">
+              <span className="eyebrow-dot" aria-hidden="true" />
+              Strengths
+            </span>
+            <h3>Soft skills I rely on</h3>
+            <div className="tag-row">
+              {softSkills.map((skill) => (
+                <span className="tag" key={skill}>
+                  {skill}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="skills-aside-block">
+            <span className="eyebrow">
+              <span className="eyebrow-dot" aria-hidden="true" />
+              Currently learning
+            </span>
+            <ul className="skills-learning">
+              {learningNow.map((item) => (
+                <li key={item}>
+                  <ArrowRight size={13} />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="skills-aside-note">
+            <Sparkles size={15} />
+            Every skill here is applied to real work — see how it comes together in my case studies.
+          </p>
+          <AnchorLink className="text-link" href="#projects">
+            View case studies
+            <ArrowUpRight size={15} />
+          </AnchorLink>
+        </aside>
+      </div>
+
       <div className="toolbelt reveal">
         <div className="toolbelt-head">
           <SectionLabel>Tools I Use</SectionLabel>
@@ -1230,9 +1432,9 @@ function Footer() {
         </div>
         <div className="footer-links">
           {navLinks.map((link) => (
-            <Link key={link.href} to={link.href}>
+            <SectionNavLink key={link.href} to={link.href}>
               {link.label}
-            </Link>
+            </SectionNavLink>
           ))}
           <a href={profile.linkedin} target="_blank" rel="noreferrer">
             LinkedIn
@@ -1243,7 +1445,7 @@ function Footer() {
         <p>© 2026 {profile.name}. All rights reserved.</p>
         <div className="footer-meta">
           <span>Designed with intention &amp; curiosity</span>
-          <a className="back-to-top" href="#" aria-label="Back to top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
+          <a className="back-to-top" href="#" aria-label="Back to top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' }) }}>
             <ChevronUp size={16} />
             Back to top
           </a>
@@ -1263,6 +1465,7 @@ function HomePage() {
       <main>
         <Hero />
         <Highlights />
+        <Skills />
         <Projects />
         <Expertise />
         <Experience />
@@ -1706,22 +1909,45 @@ function AboutPage() {
 }
 
 function ScrollManager() {
-  const { pathname, hash } = useLocation()
+  const { pathname, hash, key } = useLocation()
+  const previousPathname = useRef(pathname)
 
   useEffect(() => {
+    const pathChanged = previousPathname.current !== pathname
+    previousPathname.current = pathname
+
     if (!hash) {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: pathChanged || prefersReducedMotion() ? 'auto' : 'smooth',
+      })
       return undefined
     }
 
     const targetId = hash.slice(1)
-    const frame = window.requestAnimationFrame(() => {
-      const element = document.getElementById(targetId)
-      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
+    let cancelled = false
+    let attempts = 0
+    let timer = 0
 
-    return () => window.cancelAnimationFrame(frame)
-  }, [pathname, hash])
+    const tryScroll = () => {
+      if (cancelled) return
+
+      // The intro loader locks scrolling, so wait until it is gone.
+      const isLocked = document.body.classList.contains('is-loading')
+      if (!isLocked && scrollToSection(targetId)) return
+
+      attempts += 1
+      if (attempts < 40) timer = window.setTimeout(tryScroll, 80)
+    }
+
+    timer = window.setTimeout(tryScroll, 0)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [pathname, hash, key])
 
   return null
 }

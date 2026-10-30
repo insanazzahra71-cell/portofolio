@@ -19,10 +19,74 @@ export const profile = {
 export const navLinks = [
   { label: 'Home', href: '/' },
   { label: 'About', href: '/about' },
-  { label: 'Skills', href: '/#expertise' },
+  { label: 'Skills', href: '/#skills' },
   { label: 'Projects', href: '/#projects' },
   { label: 'Experience', href: '/#experience' },
   { label: 'Contact', href: '/#contact' },
+]
+
+export const skills = [
+  {
+    title: 'Business & System Analysis',
+    caption: 'Turning needs into clear, executable requirements.',
+    items: [
+      { name: 'Requirements gathering', level: 90 },
+      { name: 'Business process modeling', level: 88 },
+      { name: 'UML & BPMN', level: 85 },
+      { name: 'BRD & documentation', level: 86 },
+      { name: 'Stakeholder analysis', level: 84 },
+    ],
+  },
+  {
+    title: 'Quality Assurance',
+    caption: 'Protecting the experience with structured testing.',
+    items: [
+      { name: 'Test planning & strategy', level: 88 },
+      { name: 'Test case design', level: 90 },
+      { name: 'Manual & regression testing', level: 92 },
+      { name: 'API testing (Postman)', level: 78 },
+      { name: 'Defect reporting & tracking', level: 87 },
+    ],
+  },
+  {
+    title: 'UI/UX Design',
+    caption: 'Making the next step obvious for every user.',
+    items: [
+      { name: 'User research', level: 82 },
+      { name: 'Wireframing', level: 88 },
+      { name: 'Prototyping', level: 86 },
+      { name: 'Design systems', level: 80 },
+      { name: 'Usability testing', level: 78 },
+    ],
+  },
+  {
+    title: 'Data & Documentation',
+    caption: 'Keeping decisions grounded in evidence.',
+    items: [
+      { name: 'SQL & database queries', level: 78 },
+      { name: 'Spreadsheet analysis', level: 88 },
+      { name: 'Data visualization', level: 76 },
+      { name: 'Notion & Miro', level: 90 },
+      { name: 'Jira & workflow tools', level: 85 },
+    ],
+  },
+]
+
+export const softSkills = [
+  'Communication',
+  'Stakeholder management',
+  'Team collaboration',
+  'Problem solving',
+  'Attention to detail',
+  'Time management',
+  'Adaptability',
+  'Presentation',
+]
+
+export const learningNow = [
+  'SQL for data analytics',
+  'Test automation with Playwright',
+  'Power BI dashboards',
 ]
 
 export const projects = [
